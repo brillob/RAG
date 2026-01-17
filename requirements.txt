@@ -28,6 +28,7 @@ tenacity==8.2.3
 # Local vector database and embeddings
 chromadb==0.4.22
 sentence-transformers==2.2.2
+huggingface-hub<0.20.0
 
 # PDF processing
 pypdf==3.17.4
