@@ -6,6 +6,10 @@ from pathlib import Path
 import requests
 from urllib.parse import urlparse
 
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 from app.services.pdf_processor import PDFProcessor, ChunkingStrategy
 from app.services.vector_store import VectorStore
 from app.services.embeddings import EmbeddingService
