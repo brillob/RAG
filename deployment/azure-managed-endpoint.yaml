@@ -1,0 +1,86 @@
+# Azure Managed Endpoint deployment configuration
+# This is a template - adjust based on your Azure setup
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-student-support
+  labels:
+    app: rag-student-support
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+  selector:
+    app: rag-student-support
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-student-support
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rag-student-support
+  template:
+    metadata:
+      labels:
+        app: rag-student-support
+    spec:
+      containers:
+      - name: rag-student-support
+        image: your-registry.azurecr.io/rag-student-support:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: AZURE_SEARCH_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: rag-secrets
+              key: azure-search-endpoint
+        - name: AZURE_SEARCH_KEY
+          valueFrom:
+            secretKeyRef:
+              name: rag-secrets
+              key: azure-search-key
+        - name: AZURE_SEARCH_INDEX_NAME
+          valueFrom:
+            secretKeyRef:
+              name: rag-secrets
+              key: azure-search-index-name
+        - name: AZURE_OPENAI_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: rag-secrets
+              key: azure-openai-endpoint
+        - name: AZURE_OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: rag-secrets
+              key: azure-openai-api-key
+        - name: AZURE_OPENAI_DEPLOYMENT_NAME
+          value: "gpt-4"
+        - name: LOG_LEVEL
+          value: "INFO"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
