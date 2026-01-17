@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Architecture - Azure & Docker</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'default',
+            flowchart: { 
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            border-bottom: 4px solid #667eea;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        h2 {
+            color: #555;
+            margin-top: 50px;
+            margin-bottom: 20px;
+            border-left: 5px solid #667eea;
+            padding-left: 20px;
+            font-size: 1.8em;
+        }
+        
+        .diagram-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 2px solid #e9ecef;
+        }
+        
+        .mermaid {
+            text-align: center;
+            overflow-x: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        .note {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .note strong {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .summary-box {
+            background: #e3f2fd;
+            border-left: 5px solid #2196F3;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 5px;
+        }
+        
+        .summary-box h3 {
+            color: #1976D2;
+            margin-bottom: 15px;
+        }
+        
+        .summary-box {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .summary-box table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .summary-box th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .summary-box td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .summary-box tr:hover {
+            background: #f0f0f0;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .feature-item {
+            background: #4CAF50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .toc {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        
+        .toc h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .toc li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .toc a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .toc a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏗️ Production Architecture - Azure & Docker</h1>
+        
+        <div class="note">
+            <strong>📌 Production Deployment Architecture</strong>
+            This document shows the complete production architecture using Azure services and Docker containers.
+            All diagrams are interactive and rendered using Mermaid.js.
+        </div>
+        
+        <div class="toc">
+            <h3>📑 Table of Contents</h3>
+            <ul>
+                <li><a href="#system-architecture">System Architecture</a></li>
+                <li><a href="#docker-architecture">Docker Container Architecture</a></li>
+                <li><a href="#data-flow">Production Data Flow</a></li>
+                <li><a href="#deployment">Deployment Pipeline</a></li>
+                <li><a href="#security">Security Architecture</a></li>
+                <li><a href="#monitoring">Monitoring & Observability</a></li>
+                <li><a href="#scaling">Scaling Architecture</a></li>
+                <li><a href="#data-arch">Data Architecture</a></li>
+                <li><a href="#network">Network Architecture</a></li>
+            </ul>
+        </div>
+
+        <h2 id="system-architecture">Production System Architecture</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+graph TB
+    subgraph "Client Layer"
+        Student[👤 Student<br/>WhatsApp]
+        Admin[👨‍💼 Admin<br/>Dashboard]
+    end
+    
+    subgraph "Integration Layer"
+        n8n[n8n Workflow<br/>Automation Platform]
+        Webhook[Webhook<br/>Endpoint]
+    end
+    
+    subgraph "Azure Application Gateway"
+        Gateway[Application Gateway<br/>Load Balancer<br/>SSL Termination]
+    end
+    
+    subgraph "Azure App Service"
+        AppService[App Service<br/>Container Host]
+        subgraph "Docker Container"
+            FastAPI[FastAPI Application<br/>Python 3.10+<br/>Port 8000]
+            Gunicorn[Gunicorn<br/>WSGI Server]
+        end
+    end
+    
+    subgraph "Azure AI Services"
+        AzureSearch[Azure AI Search<br/>Vector Database<br/>Semantic Search]
+        AzureOpenAI[Azure OpenAI<br/>GPT-4 Deployment<br/>Semantic Kernel]
+    end
+    
+    subgraph "Azure Storage"
+        ACR[Azure Container Registry<br/>Docker Images]
+        BlobStorage[Blob Storage<br/>PDF Documents<br/>Knowledge Base]
+    end
+    
+    subgraph "Azure Monitoring"
+        AppInsights[Application Insights<br/>Logging & Metrics]
+        LogAnalytics[Log Analytics<br/>Centralized Logs]
+    end
+    
+    subgraph "Azure Security"
+        KeyVault[Key Vault<br/>Secrets Management]
+        ManagedIdentity[Managed Identity<br/>Service Authentication]
+    end
+    
+    subgraph "CI/CD Pipeline"
+        GitHub[GitHub Repository]
+        GitHubActions[GitHub Actions<br/>CI/CD Workflow]
+        Build[Build Docker Image]
+        Push[Push to ACR]
+        Deploy[Deploy to App Service]
+    end
+    
+    Student -->|HTTP/HTTPS| n8n
+    Admin -->|HTTPS| Gateway
+    n8n -->|API Calls| Gateway
+    Webhook -->|POST /api/v1/query| Gateway
+    
+    Gateway -->|Route Traffic| AppService
+    AppService -->|Runs| FastAPI
+    FastAPI -->|WSGI| Gunicorn
+    
+    FastAPI -->|Query| AzureSearch
+    FastAPI -->|Generate Response| AzureOpenAI
+    FastAPI -->|Read Secrets| KeyVault
+    FastAPI -->|Authenticate| ManagedIdentity
+    
+    AzureSearch -->|Index Documents| BlobStorage
+    FastAPI -->|Logs| AppInsights
+    AppInsights -->|Store Logs| LogAnalytics
+    
+    GitHub -->|Trigger| GitHubActions
+    GitHubActions -->|Build| Build
+    Build -->|Push| ACR
+    ACR -->|Pull Image| AppService
+    GitHubActions -->|Deploy| Deploy
+    Deploy -->|Update| AppService
+            </div>
+        </div>
+
+        <h2 id="docker-architecture">Docker Container Architecture</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+graph TB
+    subgraph "Docker Image Layers"
+        Base[Python 3.10 Slim<br/>Base Image]
+        Dependencies[Install Dependencies<br/>requirements.txt]
+        AppCode[Copy Application Code<br/>app/ directory]
+        Scripts[Copy Scripts<br/>scripts/ directory]
+        Config[Copy Config Files<br/>.env, Dockerfile]
+    end
+    
+    subgraph "Container Runtime"
+        Container[Docker Container<br/>Running Instance]
+        subgraph "Application Process"
+            Gunicorn[Gunicorn Master<br/>Process Manager]
+            Workers[Gunicorn Workers<br/>4-8 Workers]
+            FastAPI[FastAPI App<br/>Per Worker]
+        end
+        HealthCheck[Health Check<br/>/health endpoint]
+    end
+    
+    subgraph "Container Resources"
+        Volumes[Volume Mounts<br/>Optional: Local Data]
+        Network[Network Bridge<br/>Port 8000]
+        Environment[Environment Variables<br/>From Azure App Service]
+    end
+    
+    Base --> Dependencies
+    Dependencies --> AppCode
+    AppCode --> Scripts
+    Scripts --> Config
+    
+    Config --> Container
+    Container --> Gunicorn
+    Gunicorn --> Workers
+    Workers --> FastAPI
+    Container --> HealthCheck
+    
+    Container --> Volumes
+    Container --> Network
+    Container --> Environment
+            </div>
+        </div>
+
+        <h2 id="data-flow">Production Data Flow</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+sequenceDiagram
+    participant Student
+    participant n8n
+    participant Gateway as App Gateway
+    participant AppService as App Service
+    participant Container as Docker Container
+    participant FastAPI as FastAPI App
+    participant AzureSearch as Azure AI Search
+    participant AzureOpenAI as Azure OpenAI
+    participant KeyVault as Key Vault
+    participant AppInsights as App Insights
+    
+    Student->>n8n: Ask Question (WhatsApp)
+    n8n->>Gateway: POST /api/v1/query<br/>{query, conversation_id}
+    Gateway->>Gateway: SSL Termination<br/>Load Balancing
+    Gateway->>AppService: Route to Container
+    AppService->>Container: Forward Request
+    Container->>FastAPI: Process Request
+    
+    FastAPI->>KeyVault: Get API Keys<br/>(Cached)
+    KeyVault-->>FastAPI: Return Secrets
+    
+    FastAPI->>FastAPI: Validate Request<br/>Check API Key
+    
+    FastAPI->>AzureSearch: Semantic Search<br/>Query: student question
+    AzureSearch-->>FastAPI: Relevant Documents
+    
+    FastAPI->>AzureOpenAI: Generate Response<br/>Context + Documents
+    AzureOpenAI-->>FastAPI: AI Response
+    
+    FastAPI->>FastAPI: Apply Guardrails<br/>Validate Response
+    
+    FastAPI->>AppInsights: Log Request<br/>Metrics & Telemetry
+    FastAPI-->>Container: JSON Response
+    Container-->>AppService: Return Response
+    AppService-->>Gateway: Forward Response
+    Gateway-->>n8n: JSON Response
+    n8n-->>Student: Answer (WhatsApp)
+            </div>
+        </div>
+
+        <h2 id="deployment">Deployment Pipeline</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+graph LR
+    subgraph "Source Control"
+        Dev[Developer<br/>Local Development]
+        GitHub[GitHub Repository<br/>Main Branch]
+    end
+    
+    subgraph "CI/CD Pipeline"
+        Trigger[Git Push<br/>Triggers Workflow]
+        Build[Build Stage<br/>Docker Build]
+        Test[Test Stage<br/>Unit Tests]
+        Security[Security Scan<br/>Vulnerability Check]
+        Push[Push to ACR<br/>Tag with Version]
+    end
+    
+    subgraph "Azure Container Registry"
+        ACR[ACR Repository<br/>rag-student-support:latest<br/>rag-student-support:v1.0.0]
+    end
+    
+    subgraph "Azure Deployment"
+        AppService[App Service<br/>Pull from ACR]
+        Staging[Staging Slot<br/>Blue-Green Deploy]
+        Production[Production Slot<br/>Live Traffic]
+    end
+    
+    subgraph "Monitoring"
+        HealthCheck[Health Check<br/>/health endpoint]
+        Rollback[Auto Rollback<br/>If Unhealthy]
+    end
+    
+    Dev -->|git push| GitHub
+    GitHub -->|Webhook| Trigger
+    Trigger --> Build
+    Build --> Test
+    Test --> Security
+    Security --> Push
+    Push --> ACR
+    
+    ACR -->|Pull Image| AppService
+    AppService -->|Deploy to| Staging
+    Staging -->|Health Check| HealthCheck
+    HealthCheck -->|Pass| Production
+    HealthCheck -->|Fail| Rollback
+    Rollback -->|Revert to| ACR
+            </div>
+        </div>
+
+        <h2 id="security">Security Architecture</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+graph TB
+    subgraph "Network Security"
+        VNet[Virtual Network<br/>Isolated Network]
+        NSG[Network Security Group<br/>Firewall Rules]
+        PrivateEndpoint[Private Endpoints<br/>Secure Connections]
+    end
+    
+    subgraph "Identity & Access"
+        ManagedIdentity[Managed Identity<br/>No Secrets in Code]
+        RBAC[Role-Based Access Control<br/>Azure AD]
+        APIKey[API Key Authentication<br/>X-API-Key Header]
+    end
+    
+    subgraph "Secrets Management"
+        KeyVault[Azure Key Vault<br/>Centralized Secrets]
+        Secrets[Stored Secrets:<br/>- Azure Search Key<br/>- OpenAI Key<br/>- API Keys]
+    end
+    
+    subgraph "Data Security"
+        Encryption[Encryption at Rest<br/>Azure Storage]
+        TLS[TLS 1.2+<br/>In Transit]
+        Firewall[Azure Search Firewall<br/>IP Whitelist]
+    end
+    
+    subgraph "Application Security"
+        ContainerScan[Container Scanning<br/>Vulnerability Check]
+        DDoS[DDoS Protection<br/>Application Gateway]
+        WAF[Web Application Firewall<br/>OWASP Rules]
+    end
+    
+    VNet --> NSG
+    VNet --> PrivateEndpoint
+    AppService --> ManagedIdentity
+    ManagedIdentity --> KeyVault
+    KeyVault --> Secrets
+    
+    AppService --> TLS
+    AzureSearch --> Encryption
+    AzureSearch --> Firewall
+    
+    Gateway --> DDoS
+    Gateway --> WAF
+    Container --> ContainerScan
+            </div>
+        </div>
+
+        <h2 id="monitoring">Monitoring & Observability</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+graph TB
+    subgraph "Application Layer"
+        FastAPI[FastAPI Application]
+        Logs[Application Logs<br/>Structured Logging]
+        Metrics[Custom Metrics<br/>Request Count, Latency]
+    end
+    
+    subgraph "Azure Monitoring"
+        AppInsights[Application Insights<br/>APM & Telemetry]
+        LogAnalytics[Log Analytics Workspace<br/>Centralized Logs]
+        Alerts[Alert Rules<br/>Threshold-based]
+    end
+    
+    subgraph "Dashboards"
+        Dashboard[Azure Dashboard<br/>Real-time Metrics]
+        Grafana[Grafana Dashboard<br/>Optional]
+    end
+    
+    subgraph "Notifications"
+        Email[Email Alerts]
+        Teams[Microsoft Teams<br/>Notifications]
+        SMS[SMS Alerts<br/>Critical Issues]
+    end
+    
+    FastAPI --> Logs
+    FastAPI --> Metrics
+    Logs --> AppInsights
+    Metrics --> AppInsights
+    AppInsights --> LogAnalytics
+    AppInsights --> Alerts
+    AppInsights --> Dashboard
+    
+    Alerts --> Email
+    Alerts --> Teams
+    Alerts --> SMS
+    
+    LogAnalytics --> Grafana
+            </div>
+        </div>
+
+        <h2 id="scaling">Scaling Architecture</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+graph TB
+    subgraph "Auto-Scaling"
+        Metrics[Performance Metrics<br/>CPU, Memory, Requests]
+        ScaleRules[Scale Rules<br/>Threshold-based]
+        ScaleOut[Scale Out<br/>Add Instances]
+        ScaleIn[Scale In<br/>Remove Instances]
+    end
+    
+    subgraph "App Service Plan"
+        Plan[App Service Plan<br/>Standard/Premium]
+        Instances1[Instance 1<br/>Container]
+        Instances2[Instance 2<br/>Container]
+        Instances3[Instance N<br/>Container]
+    end
+    
+    subgraph "Load Distribution"
+        LoadBalancer[Load Balancer<br/>Round Robin]
+        HealthCheck[Health Checks<br/>Per Instance]
+    end
+    
+    Metrics --> ScaleRules
+    ScaleRules -->|High Load| ScaleOut
+    ScaleRules -->|Low Load| ScaleIn
+    
+    ScaleOut --> Instances1
+    ScaleOut --> Instances2
+    ScaleOut --> Instances3
+    
+    Instances1 --> LoadBalancer
+    Instances2 --> LoadBalancer
+    Instances3 --> LoadBalancer
+    
+    LoadBalancer --> HealthCheck
+    HealthCheck -->|Healthy| Instances1
+    HealthCheck -->|Healthy| Instances2
+    HealthCheck -->|Unhealthy| ScaleIn
+            </div>
+        </div>
+
+        <h2 id="data-arch">Data Architecture</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+graph TB
+    subgraph "Data Sources"
+        PDF[ICL Handbook PDF<br/>Source Document]
+        Updates[Document Updates<br/>Periodic Refresh]
+    end
+    
+    subgraph "Processing Pipeline"
+        Processor[PDF Processor<br/>Extract & Chunk]
+        Embeddings[Generate Embeddings<br/>Azure OpenAI]
+        Indexer[Index Documents<br/>Azure AI Search]
+    end
+    
+    subgraph "Azure AI Search"
+        Index[Search Index<br/>Vector + Metadata]
+        Fields[Index Fields:<br/>- content<br/>- embedding<br/>- metadata<br/>- source]
+    end
+    
+    subgraph "Query Flow"
+        Query[Student Query]
+        Search[Semantic Search<br/>Vector Similarity]
+        Results[Ranked Results<br/>Top K Documents]
+    end
+    
+    PDF --> Processor
+    Updates --> Processor
+    Processor --> Embeddings
+    Embeddings --> Indexer
+    Indexer --> Index
+    Index --> Fields
+    
+    Query --> Search
+    Search --> Index
+    Index --> Results
+            </div>
+        </div>
+
+        <h2 id="network">Network Architecture</h2>
+        <div class="diagram-container">
+            <div class="mermaid">
+graph TB
+    subgraph "Internet"
+        Users[End Users<br/>Students, n8n]
+    end
+    
+    subgraph "Azure Edge"
+        CDN[Azure CDN<br/>Optional: Static Assets]
+        Gateway[Application Gateway<br/>Public IP]
+    end
+    
+    subgraph "Azure Network"
+        VNet[Virtual Network<br/>10.0.0.0/16]
+        Subnet1[App Service Subnet<br/>10.0.1.0/24]
+        Subnet2[Private Endpoint Subnet<br/>10.0.2.0/24]
+    end
+    
+    subgraph "Azure Services"
+        AppService[App Service<br/>Private Endpoint]
+        AzureSearch[Azure AI Search<br/>Private Endpoint]
+        AzureOpenAI[Azure OpenAI<br/>Private Endpoint]
+    end
+    
+    Users -->|HTTPS| CDN
+    Users -->|HTTPS| Gateway
+    Gateway -->|Route| VNet
+    VNet --> Subnet1
+    VNet --> Subnet2
+    
+    Subnet1 --> AppService
+    Subnet2 --> AzureSearch
+    Subnet2 --> AzureOpenAI
+    
+    AppService -.->|Private Link| AzureSearch
+    AppService -.->|Private Link| AzureOpenAI
+            </div>
+        </div>
+
+        <div class="summary-box">
+            <h3>📋 Azure Services Summary</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Purpose</th>
+                        <th>Tier</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>App Service</strong></td>
+                        <td>Container hosting</td>
+                        <td>Standard/Premium</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Azure AI Search</strong></td>
+                        <td>Vector database & semantic search</td>
+                        <td>Standard S1</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Azure OpenAI</strong></td>
+                        <td>LLM for response generation</td>
+                        <td>Pay-per-use</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Container Registry</strong></td>
+                        <td>Docker image storage</td>
+                        <td>Basic</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Application Gateway</strong></td>
+                        <td>Load balancer & SSL</td>
+                        <td>Standard</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Key Vault</strong></td>
+                        <td>Secrets management</td>
+                        <td>Standard</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Application Insights</strong></td>
+                        <td>Monitoring & logging</td>
+                        <td>Pay-per-use</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Log Analytics</strong></td>
+                        <td>Centralized logs</td>
+                        <td>Pay-per-use</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Blob Storage</strong></td>
+                        <td>Document storage</td>
+                        <td>Hot tier</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="summary-box">
+            <h3>🐳 Docker Configuration</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li>✅ <strong>Base Image:</strong> Python 3.10-slim</li>
+                <li>✅ <strong>WSGI Server:</strong> Gunicorn with 4-8 workers</li>
+                <li>✅ <strong>Port:</strong> 8000 (internal)</li>
+                <li>✅ <strong>Health Check:</strong> /health endpoint</li>
+                <li>✅ <strong>Multi-stage Build:</strong> Optimized image size</li>
+            </ul>
+        </div>
+
+        <div class="summary-box">
+            <h3>🎯 Key Production Features</h3>
+            <div class="features">
+                <div class="feature-item">✅ Scalability</div>
+                <div class="feature-item">✅ Security</div>
+                <div class="feature-item">✅ Monitoring</div>
+                <div class="feature-item">✅ CI/CD</div>
+                <div class="feature-item">✅ High Availability</div>
+                <div class="feature-item">✅ Performance</div>
+                <div class="feature-item">✅ Compliance</div>
+            </div>
+        </div>
+
+        <div class="note">
+            <strong>💡 Tips:</strong>
+            <ul style="margin-top: 10px; padding-left: 20px;">
+                <li>All diagrams are interactive and rendered using Mermaid.js</li>
+                <li>For best viewing experience, use a modern browser (Chrome, Firefox, Edge)</li>
+                <li>Diagrams will render automatically when the page loads</li>
+                <li>You can zoom in/out on diagrams for better detail</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
