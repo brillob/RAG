@@ -38,7 +38,16 @@ def download_pdf(url: str, output_path: str) -> Path:
     
     logger.info(f"Downloading PDF from {url}...")
     try:
-        response = requests.get(url, timeout=30)
+        # Add headers to mimic a browser request (fixes 406 errors)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/pdf,application/octet-stream,*/*',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Referer': 'https://www.icl.ac.nz/'
+        }
+        response = requests.get(url, headers=headers, timeout=30)
         response.raise_for_status()
         
         with open(output_path, 'wb') as f:
