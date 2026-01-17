@@ -112,7 +112,6 @@ def verify_api_key(x_api_key: Optional[str] = Header(None)) -> bool:
 
 @app.get(
     "/health",
-    response_model=HealthResponse,
     tags=["Monitoring"],
     summary="Health Check",
     description="Check if the API service is running and healthy.",
@@ -128,7 +127,23 @@ async def health_check():
     - Monitoring systems
     - Container orchestration (Kubernetes liveness/readiness probes)
     """
-    return HealthResponse()
+    health_data = {
+        "status": "healthy",
+        "version": "1.0.0"
+    }
+    
+    # Add LLM health status if in local mode
+    if settings.is_local_mode() and hasattr(rag_service, 'local_llm'):
+        try:
+            if hasattr(rag_service.local_llm, 'health_check'):
+                llm_health = await rag_service.local_llm.health_check()
+                health_data["llm"] = llm_health
+            else:
+                health_data["llm"] = {"status": "mock", "provider": "mock_openai"}
+        except Exception as e:
+            health_data["llm"] = {"status": "error", "error": str(e)}
+    
+    return health_data
 
 
 @app.post(

@@ -46,7 +46,9 @@ def test_query(query: str = "What are the enrolment requirements?", api_key: str
     
     try:
         print("Sending request...")
-        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        # Use longer timeout for debug mode (120 seconds)
+        timeout = 120 if os.getenv("LOG_LEVEL", "").upper() == "DEBUG" else 30
+        response = requests.post(url, json=payload, headers=headers, timeout=timeout)
         response.raise_for_status()
         
         data = response.json()

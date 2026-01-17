@@ -10,13 +10,23 @@ from app.services.conversation_memory import get_conversation_memory
 logger = logging.getLogger(__name__)
 
 # Conditional imports
+# Note: Semantic Kernel is only needed in Azure mode
+# In local mode, this import may fail due to dependency conflicts, which is OK
+SEMANTIC_KERNEL_AVAILABLE = False
 try:
     import semantic_kernel as sk
     from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
     SEMANTIC_KERNEL_AVAILABLE = True
-except ImportError:
-    SEMANTIC_KERNEL_AVAILABLE = False
-    logger.warning("Semantic Kernel not available, will use fallback")
+except ImportError as e:
+    # Only warn if we're in Azure mode (where it's actually needed)
+    # In local mode, this is expected and harmless
+    if not settings.is_local_mode():
+        logger.warning(
+            f"Semantic Kernel not available (import error: {e}), "
+            "will use direct OpenAI API fallback. This may indicate a dependency conflict."
+        )
+    else:
+        logger.debug("Semantic Kernel not available (not needed in local mode)")
 
 from app.services.vector_store import VectorStore
 from app.services.embeddings import EmbeddingService
@@ -24,7 +34,7 @@ from app.services.embeddings import EmbeddingService
 if not settings.is_local_mode():
     from app.services.azure_search import AzureSearchService
 else:
-    from app.services.mock_openai import MockOpenAIService
+    from app.services.local_llm import LocalLLMService
 
 
 class RAGService:
@@ -39,7 +49,23 @@ class RAGService:
             # Use vector database for local RAG
             self.vector_store = VectorStore()
             self.embedding_service = EmbeddingService()
-            self.mock_openai = MockOpenAIService()
+            
+            # Initialize local LLM service
+            try:
+                self.local_llm = LocalLLMService(
+                    provider=settings.local_llm_provider,
+                    model_name=settings.local_llm_model,
+                    base_url=settings.local_llm_base_url,
+                    use_gpu=settings.local_llm_use_gpu
+                )
+                logger.info(f"Local LLM service initialized: {settings.local_llm_provider} ({settings.local_llm_model})")
+            except Exception as e:
+                logger.error(f"Failed to initialize local LLM service: {e}")
+                logger.warning("Falling back to mock OpenAI service")
+                from app.services.mock_openai import MockOpenAIService
+                self.local_llm = MockOpenAIService()
+                logger.info("Using mock OpenAI service as fallback")
+            
             self.kernel = None
             self.rag_function = None
             self.search_service = None  # Not used in local mode
@@ -105,7 +131,7 @@ Provide a helpful, accurate response based only on the context above:
         # Create the prompt function
         # Try different Semantic Kernel API versions for compatibility
         try:
-            # Try newer API (0.9.0+)
+            # Try newer API (1.30.0+)
             self.rag_function = self.kernel.create_function_from_prompt(
                 function_name="answer_student_query",
                 plugin_name="StudentSupport",
@@ -311,13 +337,40 @@ Provide a helpful, accurate response based only on the context above:
         # Use the highest score as base confidence
         max_score = max(doc.get('score', 0.0) for doc in search_results)
         
-        # Normalize to 0-1 range (Azure Search scores can vary)
-        # Adjust normalization based on your actual score ranges
-        normalized = min(max_score / 10.0, 1.0)  # Assuming max score around 10
+        # Normalize based on mode
+        if self.is_local:
+            # Local mode: ChromaDB returns scores in 0-1 range (1.0 - distance)
+            # Distance is cosine distance, so score = 1.0 - distance
+            # For good matches, distance is low (0.1-0.3), so score is high (0.7-0.9)
+            # For poor matches, distance is high (0.7-1.0), so score is low (0.0-0.3)
+            normalized = max_score  # Already in 0-1 range, use directly
+            
+            # Apply sigmoid-like transformation to better distinguish good vs poor matches
+            # This makes scores above 0.7 more confident, scores below 0.5 less confident
+            if normalized >= 0.7:
+                # High similarity: boost confidence
+                normalized = 0.7 + (normalized - 0.7) * 0.5  # Scale 0.7-1.0 to 0.7-0.85
+            elif normalized >= 0.5:
+                # Medium similarity: moderate confidence
+                normalized = 0.5 + (normalized - 0.5) * 0.4  # Scale 0.5-0.7 to 0.5-0.58
+            else:
+                # Low similarity: reduce confidence
+                normalized = normalized * 0.7  # Scale 0.0-0.5 to 0.0-0.35
+        else:
+            # Azure mode: Azure Search scores can vary (often 0-10 range)
+            # Normalize to 0-1 range
+            normalized = min(max_score / 10.0, 1.0)
         
-        # Boost confidence if multiple relevant results
+        # Boost confidence if multiple relevant results (indicates query is well-covered)
         if len(search_results) >= 3:
-            normalized = min(normalized * 1.1, 1.0)
+            # Small boost for multiple results
+            normalized = min(normalized * 1.15, 1.0)
+        elif len(search_results) >= 2:
+            # Smaller boost for 2 results
+            normalized = min(normalized * 1.08, 1.0)
+        
+        # Ensure confidence is in valid range
+        normalized = max(0.0, min(1.0, normalized))
         
         return round(normalized, 2)
     
@@ -379,14 +432,14 @@ Provide a helpful, accurate response based only on the context above:
         language: str,
         conversation_context: str = ""
     ) -> str:
-        """Generate response using mock OpenAI service for local testing."""
+        """Generate response using local LLM service."""
         try:
             # Build prompt with conversation context if available
             context_section = f"Context from knowledge base:\n{context}"
             if conversation_context:
                 context_section = f"{conversation_context}\n\n{context_section}"
             
-            prompt = f"""You are a helpful student support assistant. Answer the student's question based ONLY on the provided context.
+            system_prompt = f"""You are a helpful student support assistant. Answer the student's question based ONLY on the provided context.
 
 IMPORTANT RULES:
 1. Only use information from the provided context below
@@ -394,24 +447,41 @@ IMPORTANT RULES:
 3. Do not make up or infer information not explicitly stated in the context
 4. Keep your response concise and clear (under {settings.max_response_length} characters)
 5. Respond in the same language as the student's question
-6. If this is a follow-up question, use the conversation history to understand context
-
-{context_section}
+6. If this is a follow-up question, use the conversation history to understand context"""
+            
+            user_prompt = f"""{context_section}
 
 Student's question: {query}
 
 Provide a helpful, accurate response based only on the context above:"""
             
-            response = await self.mock_openai.generate_response(
-                prompt=prompt,
-                max_tokens=settings.max_response_length,
-                temperature=0.3
-            )
+            # Use local LLM service
+            if hasattr(self.local_llm, 'generate_response') and hasattr(self.local_llm, 'provider'):
+                # LocalLLMService (Ollama or Transformers)
+                response = await self.local_llm.generate_response(
+                    prompt=user_prompt,
+                    max_tokens=settings.max_response_length,
+                    temperature=0.3,
+                    system_prompt=system_prompt
+                )
+            else:
+                # Fallback to mock OpenAI (backward compatibility)
+                print(f"Fallback to mock OpenAI: {system_prompt}")
+                print(f"User prompt: {user_prompt}")
+                
+                full_prompt = f"""{system_prompt}
+
+{user_prompt}"""
+                response = await self.local_llm.generate_response(
+                    prompt=full_prompt,
+                    max_tokens=settings.max_response_length,
+                    temperature=0.3
+                )
             
             return response
             
         except Exception as e:
-            logger.error(f"Error in local response generation: {e}")
+            logger.error(f"Error in local response generation: {e}", exc_info=True)
             return "I apologize, but I encountered an error processing your question. Please try again or contact support."
     
     async def _generate_response_fallback(

@@ -1,4 +1,5 @@
 """Local testing script for the RAG API."""
+import os
 import requests
 import json
 import sys
@@ -27,7 +28,9 @@ def test_query(
     }
     
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        # Use longer timeout for debug mode (120 seconds)
+        timeout = 120 if os.getenv("LOG_LEVEL", "").upper() == "DEBUG" else 30
+        response = requests.post(url, json=payload, headers=headers, timeout=timeout)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:

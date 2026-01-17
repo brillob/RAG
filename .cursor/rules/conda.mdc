@@ -1,0 +1,9 @@
+# Conda Environment Activation Rule
+
+Always activate the conda environment 'rag-student-support' before running any python commands.
+
+When executing Python scripts or commands in the terminal:
+1. First run: `conda activate rag-student-support`
+2. Then execute the Python command
+
+This ensures all dependencies are available and the correct Python interpreter is used.

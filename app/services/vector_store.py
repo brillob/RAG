@@ -36,7 +36,10 @@ class VectorStore:
             path=str(self.persist_directory),
             settings=Settings(
                 anonymized_telemetry=False,
-                allow_reset=True
+                allow_reset=True,
+                # Suppress telemetry warnings
+                chroma_client_auth_provider=None,
+                chroma_server_auth_provider=None
             )
         )
         

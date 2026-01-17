@@ -13,6 +13,15 @@ class Settings(BaseSettings):
     vector_db_path: str = "./chroma_db"
     embedding_model: str = "all-MiniLM-L6-v2"  # or "paraphrase-multilingual-MiniLM-L12-v2" for multilingual
     
+    # Local LLM settings (for local mode)
+    local_llm_provider: str = "ollama"  # "ollama" or "transformers"
+    # Very small models optimized for RAG/QA tasks:
+    # Ollama: "tinyllama" (1.1B params, ~637MB), "qwen2.5:0.5b" (500M params, ~376MB) - smallest options
+    # Transformers: "google/flan-t5-small" (80M params, best for RAG/instruction following)
+    local_llm_model: str = "tinyllama:latest"  # Very small model (1.1B params) - perfect for RAG on laptops
+    local_llm_base_url: str = "http://localhost:11434"  # Ollama API URL
+    local_llm_use_gpu: bool = False  # Use GPU for transformers (if available)
+    
     # Chunking strategy
     chunking_strategy: str = "sentence"  # Options: sentence, semantic, section, recursive
     chunk_size: int = 500
@@ -46,6 +55,11 @@ class Settings(BaseSettings):
     # Server Configuration
     host: str = "0.0.0.0"
     port: int = 8000
+    
+    # Timeout Settings
+    api_timeout: int = 300  # API request timeout in seconds (5 minutes for LLM inference)
+    ollama_timeout: float = 120.0  # Ollama client timeout in seconds (2 minutes for debug mode)
+    debug_timeout: int = 120  # Timeout for debug/test scripts in seconds
     
     def is_local_mode(self) -> bool:
         """Check if running in local mode."""

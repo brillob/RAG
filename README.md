@@ -8,6 +8,7 @@ A production-ready Retrieval-Augmented Generation (RAG) system for handling high
 ## Features
 
 - **Real RAG with Local Vector Database**: Uses ChromaDB and sentence-transformers for local semantic search
+- **Local LLM Support**: Run lightweight language models locally (Ollama or Transformers) - no API keys needed!
 - **Actual Handbook Content**: Processes and indexes the real ICL Student Support Services Handbook
 - **Multilingual Support**: Automatically detects and responds in the student's native language
 - **Azure AI Search Integration**: Optional Azure deployment for production
@@ -21,7 +22,7 @@ A production-ready Retrieval-Augmented Generation (RAG) system for handling high
 
 **Local Mode:**
 ```
-n8n Workflow → API Endpoint → RAG Service → ChromaDB (Vector Search) → Mock OpenAI → Response
+n8n Workflow → API Endpoint → RAG Service → ChromaDB (Vector Search) → Local LLM (Ollama/Transformers) → Response
 ```
 
 **Azure Mode:**
@@ -32,6 +33,28 @@ n8n Workflow → API Endpoint → RAG Service → Azure AI Search → Semantic K
 ## Quick Start
 
 ### Local Testing (Recommended First)
+
+#### Option A: Using Anaconda/Conda (Recommended)
+
+1. **Create and activate conda environment:**
+   ```bash
+   # Windows
+   scripts\setup_conda.bat
+   
+   # Linux/Mac
+   bash scripts/setup_conda.sh
+   
+   # Or manually:
+   conda env create -f environment.yml
+   conda activate rag-student-support
+   ```
+
+2. **Install dependencies (if not done automatically):**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+#### Option B: Using Python venv
 
 1. **Install dependencies:**
    ```bash
@@ -88,17 +111,27 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment guide.
 
 ## Configuration
 
-### Local Mode
+**Important:** The `.env` file is **OPTIONAL**. The application works with sensible defaults from `config.py`. You only need a `.env` file if you want to override defaults.
 
-Create a `.env` file:
+### How Configuration Works
+
+1. **Defaults in `config.py`** - All settings have default values
+2. **Optional `.env` file** - Override defaults by creating `.env` in the project root
+3. **Environment variables** - Can also set environment variables directly
+
+### Local Mode (Default - No Configuration Needed!)
+
+The app works out of the box with defaults. To customize, create a `.env` file:
 
 ```env
+# Optional: Override defaults
 MODE=local
 LOG_LEVEL=INFO
-PORT=8000
-VECTOR_DB_PATH=./chroma_db
-EMBEDDING_MODEL=all-MiniLM-L6-v2
+LOCAL_LLM_MODEL=tinyllama
+LOCAL_LLM_PROVIDER=ollama
 ```
+
+See `.env.example` for all available options.
 
 ### Azure Mode
 

@@ -15,8 +15,10 @@ semantic-kernel>=1.30.0,<2.0.0
 openai>=1.12.0,<2.0.0
 
 # Data validation
-pydantic==2.5.0
-pydantic-settings==2.1.0
+# Note: pydantic 2.6+ required for semantic-kernel 1.39+ compatibility
+# FastAPI 0.104.1 is compatible with pydantic 2.x
+pydantic>=2.6.0,<3.0.0
+pydantic-settings>=2.1.0,<3.0.0
 
 # Language detection
 langdetect==1.0.9
@@ -24,6 +26,10 @@ langdetect==1.0.9
 # HTTP client
 httpx==0.25.2
 tenacity==8.2.3
+
+# Local LLM support (optional - for local mode)
+# transformers is optional, only needed if using transformers provider
+# torch is already included above
 
 # Local vector database and embeddings
 chromadb==0.4.22
