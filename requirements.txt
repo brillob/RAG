@@ -10,7 +10,9 @@ azure-identity==1.15.0
 semantic-kernel>=1.30.0,<2.0.0
 
 # OpenAI SDK
-openai==1.3.0
+# Note: semantic-kernel 1.30+ requires openai>=1.12.0
+# Making version flexible to resolve with semantic-kernel
+openai>=1.12.0,<2.0.0
 
 # Data validation
 pydantic==2.5.0
