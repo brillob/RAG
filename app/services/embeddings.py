@@ -1,6 +1,6 @@
 """Local embeddings service using sentence-transformers."""
 import logging
-from typing import List
+from typing import List, Optional
 import numpy as np
 
 try:
