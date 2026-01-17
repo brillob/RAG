@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG System Architecture Diagrams</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 40px;
+            border-left: 4px solid #4CAF50;
+            padding-left: 15px;
+        }
+        .diagram-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .mermaid {
+            text-align: center;
+            overflow-x: auto;
+        }
+        .note {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏗️ RAG Student Support System - Architecture Diagrams</h1>
+    
+    <div class="note">
+        <strong>📌 Note:</strong> This HTML file renders all Mermaid diagrams from ARCHITECTURE_DIAGRAM.md.
+        If diagrams don't load, check your internet connection (uses CDN).
+    </div>
+
+    <h2>System Architecture Overview</h2>
+    <div class="diagram-container">
+        <div class="mermaid">
+graph TB
+    subgraph "External Systems"
+        Student[👤 Student<br/>WhatsApp]
+        n8n[n8n Workflow<br/>Automation]
+        Swagger[🌐 Swagger UI<br/>Interactive Testing]
+    end
+    
+    subgraph "API Layer"
+        Main[app/main.py<br/>FastAPI Server<br/>+ Swagger UI]
+        Auth[API Key<br/>Verification]
+        Docs[OpenAPI<br/>Documentation]
+    end
+    
+    subgraph "Core Services"
+        RAG[app/services/rag_service.py<br/>RAG Orchestrator]
+        Memory[app/services/conversation_memory.py<br/>Conversation Memory]
+        LangDetect[app/services/language_detector.py<br/>Language Detection]
+    end
+    
+    subgraph "Local Mode Services"
+        VectorDB[app/services/vector_store.py<br/>ChromaDB]
+        MockAI[app/services/mock_openai.py<br/>Mock OpenAI]
+    end
+    
+    subgraph "Azure Mode Services"
+        AzureSearch[app/services/azure_search.py<br/>Azure AI Search]
+        SemanticKernel[Semantic Kernel<br/>Azure OpenAI]
+    end
+    
+    subgraph "Data Storage"
+        ChromaDB[(ChromaDB<br/>Vector Database)]
+        MemoryStore[(In-Memory<br/>Conversation History)]
+        AzureServices[(Azure Services<br/>Search + OpenAI)]
+    end
+    
+    subgraph "Configuration"
+        Config[app/config.py<br/>Settings]
+        Models[app/models.py<br/>Data Models]
+    end
+    
+    Student -->|HTTP Request| n8n
+    n8n -->|POST /api/v1/query| Main
+    Swagger -->|Interactive Testing| Main
+    Main -->|Validate| Auth
+    Main -->|Serves| Docs
+    Auth -->|Process| RAG
+    
+    RAG -->|Get History| Memory
+    RAG -->|Detect Language| LangDetect
+    RAG -->|Mode Check| Config
+    
+    Config -->|local| VectorDB
+    Config -->|azure| AzureSearch
+    
+    VectorDB -->|Search| ChromaDB
+    VectorDB -->|Read| ChromaDB
+    Memory -->|Store/Retrieve| MemoryStore
+    
+    RAG -->|Local Mode| MockAI
+    RAG -->|Azure Mode| SemanticKernel
+    
+    AzureSearch -->|Query| AzureServices
+    SemanticKernel -->|Generate| AzureServices
+    
+    RAG -->|Response| Main
+    Main -->|JSON Response| n8n
+    n8n -->|WhatsApp| Student
+    
+    Config -.->|Configures| RAG
+    Config -.->|Configures| VectorDB
+    Config -.->|Configures| Memory
+    Models -.->|Validates| Main
+        </div>
+    </div>
+
+    <h2>PDF Processing Flow</h2>
+    <div class="diagram-container">
+        <div class="mermaid">
+graph LR
+    subgraph "Input"
+        PDF[ICL Handbook PDF<br/>URL or File]
+    end
+    
+    subgraph "Processing Script"
+        Script[scripts/process_handbook.py<br/>Main Script]
+        PDFProc[app/services/pdf_processor.py<br/>PDF Processor]
+        Embed[app/services/embeddings.py<br/>Embeddings]
+    end
+    
+    subgraph "Chunking Strategies"
+        Sentence[Sentence-Based<br/>Split by sentences]
+        Semantic[Semantic<br/>Group by similarity]
+        Section[Section-Based<br/>Split by sections]
+        Recursive[Recursive<br/>Hierarchical split]
+    end
+    
+    subgraph "Storage"
+        VectorStore[app/services/vector_store.py<br/>Vector Store]
+        DB[(ChromaDB<br/>./chroma_db/)]
+    end
+    
+    PDF -->|Download/Read| Script
+    Script -->|Extract Text| PDFProc
+    PDFProc -->|Select Strategy| Sentence
+    PDFProc -->|Select Strategy| Semantic
+    PDFProc -->|Select Strategy| Section
+    PDFProc -->|Select Strategy| Recursive
+    
+    Semantic -->|Needs Embeddings| Embed
+    Sentence -->|Chunks| VectorStore
+    Semantic -->|Chunks| VectorStore
+    Section -->|Chunks| VectorStore
+    Recursive -->|Chunks| VectorStore
+    
+    VectorStore -->|Store with Embeddings| DB
+        </div>
+    </div>
+
+    <h2>Query Processing Flow (Detailed)</h2>
+    <div class="diagram-container">
+        <div class="mermaid">
+sequenceDiagram
+    participant Student
+    participant n8n
+    participant Main as main.py
+    participant RAG as rag_service.py
+    participant Memory as conversation_memory.py
+    participant LangDetect as language_detector.py
+    participant VectorDB as vector_store.py
+    participant ChromaDB as ChromaDB
+    participant MockAI as mock_openai.py
+    
+    Student->>n8n: Ask Question (WhatsApp)
+    n8n->>Main: POST /api/v1/query<br/>{query, conversation_id}
+    Main->>Main: Verify API Key
+    Main->>RAG: process_query(query, conversation_id)
+    
+    alt conversation_id exists
+        RAG->>Memory: get_history(conversation_id)
+        Memory-->>RAG: Conversation context
+    else new conversation
+        RAG->>Memory: create_conversation()
+        Memory-->>RAG: New conversation_id
+    end
+    
+    RAG->>Memory: add_message(user, query)
+    RAG->>LangDetect: detect_language(query)
+    LangDetect-->>RAG: Language code (e.g., "en")
+    
+    RAG->>VectorDB: search(query, n_results=5)
+    VectorDB->>ChromaDB: Query embeddings
+    ChromaDB-->>VectorDB: Similar documents
+    VectorDB-->>RAG: Search results
+    
+    RAG->>RAG: build_context(results + history)
+    RAG->>MockAI: generate_response(query, context)
+    MockAI-->>RAG: Generated response
+    
+    RAG->>RAG: apply_guardrails(response)
+    RAG->>Memory: add_message(assistant, response)
+    RAG-->>Main: {response, confidence, sources, conversation_id}
+    Main-->>n8n: JSON Response
+    n8n-->>Student: Answer (WhatsApp)
+        </div>
+    </div>
+
+    <h2>Chunking Strategy Flow</h2>
+    <div class="diagram-container">
+        <div class="mermaid">
+graph TD
+    PDF[PDF Document] --> Extract[Extract Text]
+    Extract --> SelectStrategy{Select Strategy<br/>from Config}
+    
+    SelectStrategy -->|sentence| Sentence[Sentence-Based<br/>Split at .!?]
+    SelectStrategy -->|semantic| Semantic[Semantic<br/>Group by similarity]
+    SelectStrategy -->|section| Section[Section-Based<br/>Split by headers]
+    SelectStrategy -->|recursive| Recursive[Recursive<br/>Hierarchical]
+    
+    Sentence --> Chunks1[Text Chunks]
+    Section --> Chunks2[Text Chunks]
+    Recursive --> Chunks3[Text Chunks]
+    
+    Semantic --> Embed[Generate Embeddings]
+    Embed --> Similarity[Calculate Similarity]
+    Similarity --> Merge[Merge Similar Chunks]
+    Merge --> Chunks4[Text Chunks]
+    
+    Chunks1 --> Metadata[Add Metadata]
+    Chunks2 --> Metadata
+    Chunks3 --> Metadata
+    Chunks4 --> Metadata
+    
+    Metadata --> Store[Store in Vector DB]
+    Store --> Ready[Ready for Search]
+        </div>
+    </div>
+
+    <h2>Memory Management Flow</h2>
+    <div class="diagram-container">
+        <div class="mermaid">
+stateDiagram-v2
+    [*] --> NewQuery: Student asks question
+    
+    NewQuery --> CheckConvID: Receive query
+    
+    CheckConvID --> CreateNew: No conversation_id
+    CheckConvID --> RetrieveExisting: Has conversation_id
+    
+    CreateNew --> StoreUserMsg: Create conversation
+    RetrieveExisting --> CheckExpired: Get history
+    
+    CheckExpired --> CreateNew: Expired
+    CheckExpired --> StoreUserMsg: Valid
+    
+    StoreUserMsg --> ProcessQuery: Store user message
+    
+    ProcessQuery --> GenerateResponse: Process with context
+    
+    GenerateResponse --> StoreAssistantMsg: Generate answer
+    
+    StoreAssistantMsg --> CheckLimit: Store assistant message
+    
+    CheckLimit --> TrimHistory: Exceeds max_history
+    CheckLimit --> ReturnResponse: Within limit
+    
+    TrimHistory --> ReturnResponse: Keep last N messages
+    
+    ReturnResponse --> [*]: Return to student
+        </div>
+    </div>
+
+    <div class="note">
+        <strong>💡 Tip:</strong> For the best experience, view this file in a modern browser (Chrome, Firefox, Edge).
+        All diagrams are interactive and will render automatically when the page loads.
+    </div>
+
+</body>
+</html>
