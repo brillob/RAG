@@ -12,7 +12,7 @@ setup(
         "uvicorn[standard]>=0.24.0",
         "python-dotenv>=1.0.0",
         "azure-search-documents>=11.4.0",
-        "semantic-kernel>=0.9.0",
+        "semantic-kernel>=1.30.0",
         "openai>=1.3.0",
         "azure-identity>=1.15.0",
         "pydantic>=2.5.0",
